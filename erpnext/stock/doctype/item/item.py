@@ -866,14 +866,19 @@ class Item(Document):
 							)
 						)
 
-					numeric_values, disabled = frappe.get_value(
+					disabled = frappe.get_value(
 						"Item Variant Attribute",
 						{"attribute": d.attribute, "parent": self.variant_of},
-						["numeric_values", "disabled"],
+						"disabled",
 					)
 
 					if disabled:
 						frappe.throw(_("Attribute {0} is disabled.").format(frappe.bold(d.attribute)))
+
+					# Read the numeric flag from the Item Attribute master instead of
+					# the template's child row, which may be stale or blank if the
+					# attribute was made numeric after it was added to the template.
+					numeric_values = frappe.db.get_value("Item Attribute", d.attribute, "numeric_values")
 
 					if (
 						not numeric_values

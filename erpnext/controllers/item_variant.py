@@ -219,12 +219,23 @@ def get_attribute_values(item):
 		for t in frappe.get_all("Item Attribute Value", fields=["parent", "attribute_value"]):
 			attribute_values.setdefault(t.parent.lower(), []).append(t.attribute_value)
 
+		# Determine which attributes are numeric from the Item Attribute master
+		# rather than the template's child rows, whose numeric flag and ranges
+		# may be stale or blank if the attribute was made numeric after it was
+		# added to the template.
 		for t in frappe.get_all(
 			"Item Variant Attribute",
-			fields=["attribute", "from_range", "to_range", "increment"],
-			filters={"numeric_values": 1, "parent": item.variant_of},
+			fields=["attribute"],
+			filters={"parent": item.variant_of},
 		):
-			numeric_values[t.attribute.lower()] = t
+			master = frappe.db.get_value(
+				"Item Attribute",
+				t.attribute,
+				["numeric_values", "from_range", "to_range", "increment"],
+				as_dict=True,
+			)
+			if master and master.numeric_values:
+				numeric_values[t.attribute.lower()] = master
 
 		frappe.flags.attribute_values = attribute_values
 		frappe.flags.numeric_values = numeric_values
